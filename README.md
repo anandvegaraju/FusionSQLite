@@ -3,7 +3,7 @@ Run SQL queries on Oracle Fusion Cloud DB instances from the convenience of your
 
 Steps
 
-1. Download the exe file
+1. Download the exe file here - https://github.com/anandvegaraju/FusionSQLite/raw/master/dist/FusionSQLite.exe
 2. Bypass the antivirus/firewall warnings
 3. Open the exe file
 4. Enter your Fusion instance URL (including https://), username and password. Ensure the account has HCM integration user role assigned.
