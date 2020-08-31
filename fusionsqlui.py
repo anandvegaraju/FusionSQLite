@@ -9,12 +9,14 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QTableWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QTableWidgetItem, QHeaderView, QFileDialog, QMessageBox
 from PyQt5.QtCore import pyqtSlot
-from main import runSQL
+from main import runSQL, initFusion
 from bs4 import BeautifulSoup
 import xmltodict
 import json
+import sys
+import xlwt
 
 
 class Ui_FusionSQL(object):
@@ -40,7 +42,7 @@ class Ui_FusionSQL(object):
         self.groupBox.setFocusPolicy(QtCore.Qt.ClickFocus)
         self.groupBox.setObjectName("groupBox")
         self.SQLtextEdit = QtWidgets.QPlainTextEdit(self.groupBox)
-        self.SQLtextEdit.setGeometry(QtCore.QRect(40, 106, 911, 281))
+        self.SQLtextEdit.setGeometry(QtCore.QRect(40, 106, 911, 271))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(255)
         sizePolicy.setVerticalStretch(255)
@@ -67,6 +69,11 @@ class Ui_FusionSQL(object):
         sizePolicy.setHeightForWidth(self.pushButton.sizePolicy().hasHeightForWidth())
         self.pushButton.setSizePolicy(sizePolicy)
         self.pushButton.setObjectName("pushButton")
+        self.pushButton3 = QtWidgets.QPushButton(self.groupBox)
+        self.pushButton3.setGeometry(QtCore.QRect(820, 16, 153, 28))
+        self.pushButton3.clicked.connect(self.initializeFusion)
+        self.pushButton.setSizePolicy(sizePolicy)
+        self.pushButton.setObjectName("pushButton3")
         self.progressBar = QtWidgets.QProgressBar(self.groupBox)
         self.progressBar.setGeometry(QtCore.QRect(410, 50, 371, 23))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -135,7 +142,13 @@ class Ui_FusionSQL(object):
         self.tableWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.formLayout.setWidget(0, QtWidgets.QFormLayout.SpanningRole, self.groupBox)
-
+        self.pushButton_2 = QtWidgets.QPushButton(self.groupBox)
+        self.pushButton_2.setGeometry(QtCore.QRect(445, 378, 101, 31))
+        sizePolicy.setHeightForWidth(self.pushButton_2.sizePolicy().hasHeightForWidth())
+        self.pushButton_2.setSizePolicy(sizePolicy)
+        self.pushButton_2.setObjectName("pushButton_2")
+        self.pushButton_2.clicked.connect(self.savefile)
+        self.pushButton_2.setEnabled(False)
         self.retranslateUi(FusionSQL)
         QtCore.QMetaObject.connectSlotsByName(FusionSQL)
 
@@ -143,11 +156,57 @@ class Ui_FusionSQL(object):
         _translate = QtCore.QCoreApplication.translate
         FusionSQL.setWindowTitle(_translate("FusionSQL", "FusionSQL"))
         self.groupBox.setTitle(_translate("FusionSQL", "Fusion SQL"))
+        self.pushButton3.setText(_translate("FusionSQL", "Initialize environment"))
         self.pushButton.setText(_translate("FusionSQL", "Run query"))
         self.instanceEdit.setPlaceholderText(_translate("FusionSQL", "Enter your Fusion Instance URL"))
         self.usernameEdit.setPlaceholderText(_translate("FusionSQL", "Enter your Username"))
         self.passwordEdit.setPlaceholderText(_translate("FusionSQL", "Enter your Password"))
         self.label.setText(_translate("FusionSQL", "SQL Query"))
+        self.pushButton_2.setText(_translate("FusionSQL", "Export to excel"))
+
+    def showdialog(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setText("Your query results have been exported successfully")
+        msg.setWindowTitle("File export successful")
+        msg.setStandardButtons(QMessageBox.Ok)
+        retval = msg.exec_()
+
+    def savefile(self):
+        filename,_ = QFileDialog.getSaveFileName(None, 'Save File', '', ".xls(*.xls)")
+        wbk = xlwt.Workbook()
+        sheet = wbk.add_sheet("sheet", cell_overwrite_ok=True)
+        style = xlwt.XFStyle()
+        font = xlwt.Font()
+        font.bold = True
+        style.font = font
+        model = self.tableWidget.model()
+        for c in range(model.columnCount()):
+            text = model.headerData(c, QtCore.Qt.Horizontal)
+            sheet.write(0, c+1, text, style=style)
+
+        for r in range(model.rowCount()):
+            text = model.headerData(r, QtCore.Qt.Vertical)
+            sheet.write(r+1, 0, text, style=style)
+
+        for c in range(model.columnCount()):
+            for r in range(model.rowCount()):
+                text = model.data(model.index(r, c))
+                sheet.write(r+1, c+1, text)
+        wbk.save(filename)
+        self.showdialog()
+
+    def initializeFusion(self):
+        instanceURLtext = self.instanceEdit.text()
+        fusionUserText = self.usernameEdit.text()
+        fusionPWtext = self.passwordEdit.text()
+        initFusion(instanceURLtext, fusionUserText, fusionPWtext)
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setText("The environment has been initialized successfully")
+        msg.setWindowTitle("Initialized")
+        msg.setStandardButtons(QMessageBox.Ok)
+        retval = msg.exec_()
 
     def button_click(self):
         self.progressBar.setProperty("value", 0)
@@ -171,16 +230,15 @@ class Ui_FusionSQL(object):
             rowset = resJson['ROWSET']
             self.progressBar.setProperty("value", 75)
             if type(rowset['ROW']) == "<class 'dict'>":
-                print('one row')
                 self.tableWidget.setRowCount(1)
                 for c in range(len(columns)):
                     self.tableWidget.setItem(0, c, QTableWidgetItem(rowset['ROW'][columns[c]]))
             else:
-                print('more than one row')
                 self.tableWidget.setRowCount(len(rowset['ROW']))
                 for i in range(len(rowset['ROW'])):
                     for c in range(len(columns)):
                         self.tableWidget.setItem(i, c, QTableWidgetItem(rowset['ROW'][i][columns[c]]))
+            self.pushButton_2.setEnabled(True)
         except:
             self.tableWidget.setRowCount(1)
             self.tableWidget.setColumnCount(2)
@@ -194,13 +252,13 @@ class Ui_FusionSQL(object):
         self.tableWidget.setHorizontalHeaderLabels(columns)
         self.tableWidget.resizeColumnsToContents()
         self.progressBar.setProperty("value", 100)
+        return True
 
 
 if __name__ == "__main__":
-    import sys
     app = QtWidgets.QApplication(sys.argv)
     FusionSQL = QtWidgets.QWidget()
     ui = Ui_FusionSQL()
     ui.setupUi(FusionSQL)
     FusionSQL.show()
-    sys.exit(app.exec_())
+    app.exec_()

@@ -62,8 +62,8 @@ def objectExists(instanceURL, objectPath, fusionUserName, fusionPassword):
 	soup = BeautifulSoup(response.text.encode('utf8'), 'xml')
 	return soup.find('objectExistReturn').string
 
-def runReport(instanceURL, input_sql, reportPath, fusionUserName, fusionPassword):
-	input_sql = input_sql.replace('<',' &lt; ').replace('>','&gt;').replace('&','&amp;').replace('=','&#61;')
+def runReport(instanceURL, input_sql, folderPath, reportPath, fusionUserName, fusionPassword):
+	input_sql = input_sql.replace('&','&amp;').replace('=','&#61;').replace('<','&lt;').replace('>','&gt;')
 	url = instanceURL + "/xmlpserver/services/v2/ReportService"
 	payload = "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:v2=\"http://xmlns.oracle.com/oxp/service/v2\">\r\n    <soapenv:Header/>\r\n    <soapenv:Body>\r\n        <v2:runReport>\r\n            <v2:reportRequest>\r\n                <v2:attributeFormat>xml</v2:attributeFormat>\r\n                <v2:byPassCache>True</v2:byPassCache>\r\n                <v2:flattenXML>True</v2:flattenXML>\r\n                <v2:parameterNameValues>\r\n                    <v2:listOfParamNameValues>\r\n                        <v2:item>\r\n                            <v2:name>query</v2:name>\r\n                            <v2:values>\r\n                                <v2:item>" + input_sql + "</v2:item>\r\n                            </v2:values>\r\n                        </v2:item>\r\n                        <v2:item>\r\n                            <v2:name>xdo_cursor</v2:name>\r\n                            <v2:values>\r\n                                <v2:item></v2:item>\r\n                            </v2:values>\r\n                        </v2:item>\r\n                    </v2:listOfParamNameValues>\r\n                </v2:parameterNameValues>\r\n                <v2:reportAbsolutePath>" + reportPath + "</v2:reportAbsolutePath>\r\n                <v2:sizeOfDataChunkDownload>-1</v2:sizeOfDataChunkDownload>\r\n            </v2:reportRequest>\r\n            <v2:userID>" + fusionUserName + "</v2:userID>\r\n            <v2:password>" + fusionPassword + "</v2:password>\r\n        </v2:runReport>\r\n    </soapenv:Body>\r\n</soapenv:Envelope>"
 	headers = {
@@ -71,8 +71,12 @@ def runReport(instanceURL, input_sql, reportPath, fusionUserName, fusionPassword
 	'Host': instanceURL.replace('https://',''),
 	'SOAPAction': '""'
 	}
-	response = requests.request("POST", url, headers=headers, data = payload)
-	soup = BeautifulSoup(response.text.encode('utf8'), 'xml')
+	try:
+		response = requests.request("POST", url, headers=headers, data = payload)
+		soup = BeautifulSoup(response.text.encode('utf8'), 'xml')
+	except:
+		createDataModel(folderPath, instanceURL, fusionUserName, fusionPassword)
+		createReport(instanceURL, folderPath, fusionUserName, fusionPassword)
 	try:
 		reportBytes = soup.find('reportBytes').string
 		return base64.b64decode(reportBytes).decode('UTF-8')
@@ -82,12 +86,15 @@ def runReport(instanceURL, input_sql, reportPath, fusionUserName, fusionPassword
 
 def runSQL(instanceURL, input_sql, fusionUserName, fusionPassword):
 	try:
-		createDataModel(folderPath, instanceURL, fusionUserName, fusionPassword)
-		createReport(instanceURL, folderPath, fusionUserName, fusionPassword)
-		resultXML = runReport(instanceURL, input_sql, folderPath + "/FSTreport.xdo", fusionUserName, fusionPassword)
+		#createDataModel(folderPath, instanceURL, fusionUserName, fusionPassword)
+		#createReport(instanceURL, folderPath, fusionUserName, fusionPassword)
+		resultXML = runReport(instanceURL, input_sql, folderPath, folderPath + "/FSTreport.xdo", fusionUserName, fusionPassword)
 		return resultXML
 	except:
 		return "Error running the SQL query. Please validate the URL, Credentials, Query or your network connection"
 
+def initFusion(instanceURI, uname, pw):
+	createDataModel(folderPath, instanceURI, uname, pw)
+	createReport(instanceURI, folderPath, uname, pw)
 #objectExists(instanceURL, folderPath + "/FSTreport.xdm", fusionUserName, fusionPassword)
 #runSQL('https://ekjy-test.fa.em2.oraclecloud.com', input_sql, 'eyadmin', 'Welcome@123')
