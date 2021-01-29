@@ -5,7 +5,7 @@ Ensure your fusion instance account has Integration specialist roles and appropr
 
 #Steps-
 
-Download the exe file from https://github.com/anandvegaraju/FusionSQLite/raw/master/dist/FusionSQLite.exe
+Download the exe file from https://www.dropbox.com/s/e9tbsp8nj26st8s/FusionSQLitev1-1.exe?dl=0 (Updated in Jan 2021 to work around 20d restriction)
 
 Open the exe after bypassing the warnings
 
