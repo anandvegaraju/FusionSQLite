@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" /> <!-- Consider replacing with a PWA icon -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    {/* PWA related meta tags */}
+    <meta name="description" content="A lightweight SQL query tool for Oracle Fusion HCM via BI Publisher." />
+    <meta name="theme-color" content="#1976d2" /> {/* Matches manifest theme_color */}
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png"> {/* For iOS */}
+
+
+    <title>Fusion SQL PWA</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    />
+    {/* The vite-plugin-pwa will automatically inject the manifest link here */}
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

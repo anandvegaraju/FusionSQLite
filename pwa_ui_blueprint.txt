@@ -1,0 +1,188 @@
+# PWA User Interface Blueprint
+
+## 1. Overall Structure and Philosophy
+
+*   **Goal:** Clean, modern, intuitive, lightweight, web-friendly.
+*   **Inspiration:** SQL Developer, DBeaver, VS Code (SQL extensions).
+*   **Theme:** Light and Dark themes available.
+*   **Responsiveness:** Primarily desktop-focused PWA, with reasonable tablet usability.
+*   **Clarity:** Clear labels, tooltips, and visual feedback for all actions.
+
+## 2. Main Layout (Three-Panel Structure)
+
+The application will feature a persistent three-panel layout.
+
+### 2.1. Left Panel: Navigation & Connection Management
+
+*   **Purpose:** Manage database connections and access saved queries/history.
+*   **Components:**
+    *   **Connections View (Default Tab/View):**
+        *   **Display:** List of saved Oracle Fusion connection aliases/names.
+            *   Each item in the list should clearly indicate its name.
+            *   Visual cue for the currently active connection.
+        *   **Controls:**
+            *   Button: "Add New Connection" - Opens Connection Dialog Modal.
+            *   Button: "Edit Connection" - Enabled when a connection is selected; opens Connection Dialog Modal populated with selected connection's details.
+            *   Button: "Delete Connection" - Enabled when a connection is selected; prompts for confirmation before deleting.
+        *   **Object Explorer (Conditional - Requires Investigation):**
+            *   If a connection is active and schema browsing is feasible:
+                *   Display a tree-like structure for basic objects (e.g., Tables, Views).
+                *   Items should be expandable.
+                *   Interaction: Clicking on an object might populate its name in the query editor or show basic properties (details TBD).
+    *   **Saved Queries/History (Optional Tab):**
+        *   **Functionality:** Allows users to switch between "Connections View" and this view.
+        *   **Saved Queries Sub-Tab:**
+            *   Display: List of user-saved queries (by name or a snippet).
+            *   Interaction: Clicking a saved query opens it in a new Query Editor tab.
+            *   Controls: "Delete Saved Query" option per query.
+        *   **History Sub-Tab:**
+            *   Display: Chronological list of recently executed queries (snippets).
+            *   Interaction: Clicking a history item opens it in a new Query Editor tab.
+            *   Controls: "Clear History" button.
+
+### 2.2. Top-Right Panel: Query Editor
+
+*   **Purpose:** Write, edit, and execute SQL queries.
+*   **Components:**
+    *   **Tabbed Interface:**
+        *   Each tab represents an independent query editor instance.
+        *   Tab Title: "Query 1", "Query 2", or name of saved query if applicable.
+        *   Controls: "Close" button on each tab. "+" button to open a new empty tab.
+    *   **SQL Editor Area:**
+        *   Rich text editor.
+        *   Features:
+            *   SQL syntax highlighting.
+            *   Line numbers.
+            *   Basic auto-completion (if feasible - keyword based, table/column names if object explorer is active).
+    *   **Editor Controls Toolbar:**
+        *   Dropdown: "Active Connection" - Lists all saved connections. Default to the globally active one or none. This connection will be used for query execution in this specific tab.
+        *   Button: "Run Query" (Icon: Play symbol) - Executes the query in the current editor tab using the selected active connection.
+        *   Button: "Stop Query" (Icon: Stop symbol) - Attempts to cancel the ongoing query (if BI Publisher job cancellation is possible). Disabled by default, enabled when a query is running.
+        *   Button: "Format SQL" (Icon: Code formatting symbol) - Reformats the SQL in the editor for readability.
+        *   Button: "Save Query" (Icon: Save symbol) - Allows user to name and save the current query (linked to Saved Queries in Left Panel).
+        *   Button: "Generate SQL (AI)" (Icon: Wand/Sparkle) - Opens "AI: Generate SQL" modal.
+        *   Button: "Explain SQL (AI)" (Icon: Question mark/Lightbulb) - Sends current query to AI for explanation (results in "Explain Plan/AI Review Tab").
+        *   Button: "Review SQL (AI)" (Icon: Checkmark/Magnifying glass) - Sends current query to AI for review (results in "Explain Plan/AI Review Tab").
+
+### 2.3. Bottom-Right Panel: Results & Output
+
+*   **Purpose:** Display query results, execution messages, and AI feedback.
+*   **Components:**
+    *   **Tabbed Interface:**
+        *   **Results Tab (Default):**
+            *   Display: Data grid for query results.
+                *   Columns: Dynamically generated based on query output.
+                *   Sortable: Click column headers to sort.
+                *   Filterable: Basic text-based filtering per column or globally for the grid.
+            *   Controls:
+                *   Pagination controls (e.g., "Page 1 of X", "Next", "Previous") for large result sets.
+                *   "Export to CSV" button.
+                *   "Export to Excel" button.
+                *   Information display: "Showing X to Y of Z results."
+        *   **Messages/Logs Tab:**
+            *   Display: Text area or structured log view.
+            *   Content:
+                *   BI Publisher execution messages (e.g., "Query submitted," "Fetching results...").
+                *   Execution time.
+                *   Number of rows returned/affected.
+                *   Error messages from BI Publisher or the `main.py` backend.
+                *   Logs from `main.py` functions if relevant for user feedback.
+            *   Controls: "Clear Log" button.
+        *   **Explain Plan/AI Review Tab (Future/Placeholder):**
+            *   Display: Formatted text or structured view for AI-generated content.
+            *   Content:
+                *   Query explanations from "Explain SQL (AI)".
+                *   Review feedback from "Review SQL (AI)".
+                *   Debugging suggestions from "Debug Error (AI)".
+            *   Controls: May vary based on content (e.g., "Copy to Clipboard").
+
+## 3. Key UI Elements & Modals
+
+### 3.1. Connection Dialog (Modal)
+
+*   **Triggered by:** "Add New Connection" or "Edit Connection" buttons.
+*   **Title:** "New Connection" or "Edit Connection [Connection Name]".
+*   **Fields:**
+    *   Input Text: "Connection Name" (User-defined alias). Required.
+    *   Input Text: "Instance URL" (Oracle Fusion URL). Required.
+    *   Input Text: "Username". Required.
+    *   Input Password: "Password".
+    *   Checkbox: "Save Password" (Clearly state security implications, e.g., "Password will be stored locally. Use with caution.").
+*   **Buttons:**
+    *   "Test Connection":
+        *   Action: Attempts to connect to the instance using provided details.
+        *   Feedback: Shows a success message (e.g., "Connection successful!") or an error message inline. Disables "Save" if test fails or not run.
+    *   "Save": Saves the connection details (locally) and closes the modal. Enabled only after a successful "Test Connection" or if the user explicitly wants to save without testing.
+    *   "Cancel": Closes the modal without saving changes.
+
+### 3.2. Settings/Preferences (Modal or Separate Page)
+
+*   **Triggered by:** Settings icon/link (e.g., in a global header or menu).
+*   **Sections (Tabs or Accordions):**
+    *   **General:**
+        *   Option: "Default Theme" (Dropdown: "Light", "Dark", "System Preference").
+        *   Option: Other application-wide settings (TBD).
+    *   **Editor:**
+        *   Option: "Font Size" (e.g., Small, Medium, Large, or specific pt size).
+        *   Option: "Syntax Highlighting Theme" (if multiple are available).
+        *   Option: "Enable/Disable Auto-completion" (Checkbox).
+    *   **AI Features (if applicable):**
+        *   Option: "Enable/Disable AI features" (Global toggle).
+        *   Input Text: API Key for AI service (if required).
+        *   Other AI-specific preferences.
+*   **Buttons:** "Save Settings", "Reset to Defaults", "Close".
+
+### 3.3. AI Feature Interaction Points & Modals
+
+*   **AI: Generate SQL (Modal):**
+    *   **Triggered by:** "Generate SQL (AI)" button in Query Editor.
+    *   **Title:** "Generate SQL with AI".
+    *   **Components:**
+        *   Text Area: "Describe what data you want to query (use natural language):" - Large input area for user's request.
+        *   Dropdown: "Target Connection (for context, optional)" - Allows user to select a connection to provide schema context to the AI if possible.
+    *   **Buttons:**
+        *   "Generate Query": Sends the description to the AI. On success, populates the current Query Editor tab with the generated SQL.
+        *   "Cancel": Closes the modal.
+    *   **Feedback:** Loading indicator while AI is processing. Error messages if generation fails.
+
+*   **AI: Explain SQL (Interaction):**
+    *   **Triggered by:** "Explain SQL (AI)" button in Query Editor.
+    *   **Action:** Sends the SQL from the active editor tab to the AI.
+    *   **Output:** Displays the explanation in the "Explain Plan/AI Review Tab" in the Bottom-Right Panel. Focus switches to this tab.
+
+*   **AI: Review SQL (Interaction):**
+    *   **Triggered by:** "Review SQL (AI)" button in Query Editor.
+    *   **Action:** Sends the SQL from the active editor tab to the AI for performance, style, or error checking.
+    *   **Output:** Displays the review in the "Explain Plan/AI Review Tab" in the Bottom-Right Panel. Focus switches to this tab.
+
+*   **AI: Debug Error (Interaction/Modal):**
+    *   **Triggered by:** A dedicated "Debug with AI" button that appears next to an error message in the "Messages/Logs Tab" or via a notification.
+    *   **Action (if direct):** Sends the error message and the corresponding query (if available) to the AI.
+    *   **Action (if modal):**
+        *   **Title:** "Debug Error with AI".
+        *   **Display:** Shows the original query (read-only) and the error message (read-only).
+        *   **Text Area (Optional):** "Add any additional context for the AI:"
+        *   **Buttons:** "Get AI Suggestion", "Close".
+    *   **Output:** Displays debugging help/suggestions in the "Explain Plan/AI Review Tab" or in a new section within the modal.
+
+## 4. General Look and Feel Notes
+
+*   **Icons:** Use a consistent and recognizable icon set (e.g., Material Icons, Font Awesome).
+*   **Tooltips:** Provide tooltips for all icon buttons and potentially complex UI elements to explain their function.
+*   **Feedback:**
+    *   Loading states (spinners, progress bars) for long-running operations (running query, AI interactions).
+    *   Success/Error/Warning messages (e.g., using toast notifications or inline messages).
+*   **Accessibility:** Consider ARIA attributes and keyboard navigation.
+
+## 5. Future Considerations / To Be Investigated
+
+*   **Direct Schema Browsing:** Feasibility of object explorer (tables/views) with BI Publisher.
+*   **Query Cancellation:** Possibility of stopping BI Publisher jobs from the PWA.
+*   **Advanced Auto-completion:** Context-aware auto-completion beyond basic keywords.
+*   **Sharing/Collaboration:** Features for sharing queries or connection configurations (out of scope for initial blueprint but good to keep in mind).
+*   **Local Storage Strategy:** Define how connections, saved queries, and history are stored (e.g., IndexedDB). Emphasize security for sensitive data like passwords.
+---
+This structured document should provide a solid foundation for designers and developers.
+I've tried to capture all the requirements from the description and organize them logically.
+The "Future Considerations / To Be Investigated" section highlights areas that need more technical exploration.
+No other files seem immediately necessary; this single document covers the textual wireframe/blueprint adequately.

@@ -1,0 +1,564 @@
+openapi: 3.0.0
+info:
+  title: PWA Backend API
+  version: "1.0.0"
+  description: API for the PWA to interact with Oracle Fusion instances and AI features.
+
+servers:
+  - url: /api # Base path for all API endpoints
+
+components:
+  schemas:
+    # Authentication Schemas
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: PWA username.
+        password:
+          type: string
+          description: PWA password.
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token for authenticated sessions.
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - password
+        - email # Assuming email is part of registration
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+          format: email
+    GeneralAuthResponse: # For simple success/message responses
+      type: object
+      properties:
+        message:
+          type: string
+
+    # Connection Schemas
+    Connection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the connection.
+          readOnly: true
+        name:
+          type: string
+          description: User-defined name for the connection.
+        url:
+          type: string
+          format: url
+          description: Oracle Fusion instance URL.
+        username:
+          type: string
+          description: Username for the Oracle Fusion instance.
+    ConnectionRequest: # For POST and PUT
+      type: object
+      required:
+        - name
+        - url
+        - username
+      properties:
+        name:
+          type: string
+          description: User-defined name for the connection.
+        url:
+          type: string
+          format: url
+          description: Oracle Fusion instance URL.
+        username:
+          type: string
+          description: Username for the Oracle Fusion instance.
+        password:
+          type: string
+          description: Password for the Oracle Fusion instance. To be encrypted by the backend.
+          writeOnly: true # Password should not be returned in responses
+    ConnectionTestRequest:
+      type: object
+      required:
+        - url
+        - username
+        - password
+      properties:
+        url:
+          type: string
+          format: url
+        username:
+          type: string
+        password:
+          type: string
+    ConnectionTestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          description: Detailed message about the connection test.
+        error:
+          type: string
+          description: Error message if connection failed.
+
+    # SQL Execution Schemas
+    QueryExecuteRequest:
+      type: object
+      required:
+        - connection_id
+        - sql
+      properties:
+        connection_id:
+          type: string
+          format: uuid
+          description: ID of the connection to use for execution.
+        sql:
+          type: string
+          description: SQL query to execute.
+    QueryResultRow:
+      type: object
+      description: Represents a single row of query results. Structure is dynamic.
+      additionalProperties: true
+    QueryResults:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            type: string
+          description: List of column names.
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueryResultRow'
+          description: Array of result rows.
+        rowCount:
+          type: integer
+          description: Number of rows returned.
+        executionTime:
+          type: string
+          description: Time taken for query execution (e.g., "1.23s").
+    QueryExecuteResponseSuccess:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        job_id:
+          type: string
+          description: Internal job ID for the executed query.
+        results:
+          $ref: '#/components/schemas/QueryResults'
+        logs:
+          type: array
+          items:
+            type: string
+          description: Execution logs.
+    QueryExecuteResponseError:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+          description: Error message.
+        logs:
+          type: array
+          items:
+            type: string
+          description: Execution logs, potentially including error details.
+    QueryCancelResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [cancelled, error]
+        message:
+          type: string
+          description: Message regarding cancellation status.
+
+    # AI Feature Schemas (Placeholders)
+    AIGenerateSqlRequest:
+      type: object
+      properties:
+        natural_language_prompt:
+          type: string
+    AIGenerateSqlResponse:
+      type: object
+      properties:
+        sql_query:
+          type: string
+    AIExplainSqlRequest:
+      type: object
+      properties:
+        sql_query:
+          type: string
+    AIExplainSqlResponse:
+      type: object
+      properties:
+        explanation:
+          type: string
+    AIReviewSqlRequest:
+      type: object
+      properties:
+        sql_query:
+          type: string
+    AIReviewSqlResponse:
+      type: object
+      properties:
+        review_feedback:
+          type: array
+          items:
+            type: string # Could be more structured later
+    AIDebugErrorRequest:
+      type: object
+      properties:
+        sql_query:
+          type: string
+        error_message:
+          type: string
+    AIDebugErrorResponse:
+      type: object
+      properties:
+        debugging_info:
+          type: string
+
+  securitySchemes:
+    bearerAuth: # Defines JWT Bearer token authentication
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security: # Global security requirement (can be overridden at operation level)
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      summary: User login
+      description: Authenticates a user and returns a JWT.
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful, JWT returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Unauthorized
+  /auth/register:
+    post:
+      summary: User registration
+      description: Registers a new user for the PWA.
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralAuthResponse' # Example response
+        '400':
+          description: Bad request (e.g., user already exists)
+  /auth/logout:
+    post:
+      summary: User logout
+      description: Invalidates the current user's JWT.
+      tags: [Authentication]
+      security: # Requires authentication to logout
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralAuthResponse'
+
+  /connections:
+    post:
+      summary: Create a new connection
+      description: Saves a new connection configuration for the authenticated user. Password should be encrypted before storing.
+      tags: [Connection Management]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionRequest'
+      responses:
+        '201':
+          description: Connection created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        '400':
+          description: Bad request
+    get:
+      summary: List all connections
+      description: Retrieves all saved connections for the authenticated user.
+      tags: [Connection Management]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A list of connections.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Connection'
+
+  /connections/{connection_id}:
+    parameters:
+      - name: connection_id
+        in: path
+        required: true
+        description: ID of the connection to retrieve, update or delete.
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get a specific connection
+      description: Retrieves details for a specific connection.
+      tags: [Connection Management]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Details of the connection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        '404':
+          description: Connection not found.
+    put:
+      summary: Update a connection
+      description: Updates an existing connection configuration.
+      tags: [Connection Management]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionRequest'
+      responses:
+        '200':
+          description: Connection updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        '404':
+          description: Connection not found.
+    delete:
+      summary: Delete a connection
+      description: Deletes a specific connection.
+      tags: [Connection Management]
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Connection deleted successfully.
+        '404':
+          description: Connection not found.
+
+  /connections/test:
+    post:
+      summary: Test a connection
+      description: Tests connectivity to an Oracle Fusion instance using provided credentials.
+      tags: [Connection Management]
+      security: # This might be used before a connection is saved, so JWT might not be available/required
+        - bearerAuth: [] # Or make it optional / no security if used for pre-save testing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionTestRequest'
+      responses:
+        '200':
+          description: Connection test result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionTestResponse'
+
+  /query/execute:
+    post:
+      summary: Execute SQL query
+      description: Executes an SQL query via BI Publisher using a specified connection.
+      tags: [SQL Execution]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryExecuteRequest'
+      responses:
+        '200':
+          description: Query execution successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryExecuteResponseSuccess'
+        '400': # Could also be other error codes like 500 for server-side issues
+          description: Error executing query.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryExecuteResponseError'
+
+  /query/cancel/{job_id}:
+    parameters:
+      - name: job_id
+        in: path
+        required: true
+        description: ID of the job to cancel.
+        schema:
+          type: string
+    post:
+      summary: Cancel SQL query (Optional)
+      description: Attempts to cancel an ongoing SQL query execution.
+      tags: [SQL Execution]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cancellation status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryCancelResponse'
+
+  # AI Feature Endpoints (Placeholders)
+  /ai/generate-sql:
+    post:
+      summary: Generate SQL from natural language
+      tags: [AI Features]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIGenerateSqlRequest'
+      responses:
+        '200':
+          description: Generated SQL query.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIGenerateSqlResponse'
+  /ai/explain-sql:
+    post:
+      summary: Explain an SQL query
+      tags: [AI Features]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIExplainSqlRequest'
+      responses:
+        '200':
+          description: Explanation of the SQL query.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIExplainSqlResponse'
+  /ai/review-sql:
+    post:
+      summary: Review an SQL query
+      tags: [AI Features]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIReviewSqlRequest'
+      responses:
+        '200':
+          description: Review feedback for the SQL query.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIReviewSqlResponse'
+  /ai/debug-error:
+    post:
+      summary: Debug an SQL error
+      tags: [AI Features]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIDebugErrorRequest'
+      responses:
+        '200':
+          description: Debugging information for the error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIDebugErrorResponse'
+
+# Potentially a /status endpoint that does not require auth
+  /status:
+    get:
+      summary: Get API status
+      description: Returns the current status of the API. Does not require authentication.
+      tags: [Utility]
+      security: [] # No security for this endpoint
+      responses:
+        '200':
+          description: API is operational.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "OK"
+                  timestamp:
+                    type: string
+                    format: date-time
